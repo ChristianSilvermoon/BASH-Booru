@@ -1,0 +1,7 @@
+#Ignore everything
+*
+
+#Except Project's Files
+!booru.sh
+!.gitignore
+!README.md
