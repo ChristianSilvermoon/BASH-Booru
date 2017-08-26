@@ -76,7 +76,8 @@ without the guide it looks like this:
 
 ```
 N swf firefox %FILE%
-N FALLBACK xdg-open %FILE%```
+N FALLBACK xdg-open %FILE%
+```
 
 Keep in mind that `%FILE%` is replaced with the path to the file.
 
