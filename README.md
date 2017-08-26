@@ -99,7 +99,7 @@ The Bash-Booru Database file, which contains information related to all files in
 The formatting for this file is as follows
 
 | Post ID | File Type | Date Added | MD5SUM | File Size | Original File Name | Source URLs | Tags | Comment |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | png | Wed Aug 23 01:05:39 2017 utc | a5373fc970393463f57116557f0146a6 | 796K | 1st Post.png  | https://derpibooru.org/1 | artist:speccysy, cloud, cute, derpibooru legacy, first fluttershy photo on derpibooru, fluttershy, flying, happy | First Fluttershy Post on the site! |
 
 without the guide it looks like:
