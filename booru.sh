@@ -535,10 +535,17 @@ elif [ "$1" = "--add" ]; then
 
 elif [ "$1" = "--add-wget" ]; then
 	rmfileonfail="true"
+	wget -q -O ".bbooru-wget.tmp" "$2"
+
 	wfile=$RANDOM
-	wget -q -O "$wfile" "$2"
-	finalfilename="$wfile.$(derpiget_idfiletype "$wfile")"
-	mv "$wfile" "$finalfilename"
+	finalfilename="$wfile.$(derpiget_idfiletype ".bbooru-wget.tmp")"
+
+	until [ ! -e "$finalfilename" ]; do
+		wfile=$RANDOM
+		finalfilename="$wfile.$(derpiget_idfiletype ".bbooru-wget.tmp")"
+	done
+
+	mv ".bbooru-wget.tmp" "$finalfilename"
 	database_mod --add "$finalfilename" "$3" "$4" "$5"
 	rm "$finalfilename"
 
