@@ -12,6 +12,7 @@ There are a few... this aims to replicate most of what you can do using an booru
 | --- | ---- |
 | --add (FILE) | Add file to BASH-booru |
 | --add-csv (FILE) | Add using a [Shimmie2](https://github.com/shish/shimmie2) Bulk_Add_CSV file |
+| --add-wget (FILE) | Uses `wget` to download a file using a direct link |
 | --edit-com (ID) | Edit file's Comment |
 | --edit-src (ID) | Edit file's Sources |
 | --edit-tags (ID) | Edit file's Tags |

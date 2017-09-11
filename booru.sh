@@ -9,7 +9,7 @@
 
 # Functions ------------------#
 
-version="17.8.25-git by Christian Silvermoon"
+version="17.9.11-git by Christian Silvermoon"
 
 function derpiget_idfiletype {
 	#Use: derpiget_idfiletype FILENAME
@@ -54,6 +54,9 @@ function database_mod {
 		if [ "$(database_query --md5Test "$MD5SUM")" != "" ]; then
 			echo "File is already in database"
 			database_query --md5match "$MD5SUM"
+			if [ "$rmfileonfail" = "true" ]; then
+				rm "$finalfilename"
+			fi
 			exit 1
 		fi
 
@@ -148,8 +151,9 @@ function help_message {
 	echo -e "\e[1mUSAGE\n\e[0m  bbooru <ARGS>\n"
 
 	echo -e "\e[1mARGUMENTS\e[0m"
-	echo -e "  --add <FILE>         Add file to BASH-booru"
+	echo -e "  --add <FILE>         Add file to BASH-Booru"
 	echo -e "  --add-csv <FILE>     Add using a Shimmie2 Bulk_Add_CSV file"
+	echo -e "  --add-wget <URL>     Download URL And Add to BASH-Booru"
 	echo -e "  --edit-com <ID>      Edit file's Comment"
 	echo -e "  --edit-src <ID>      Edit file's Sources"
 	echo -e "  --edit-tags <ID>     Edit file's Tags\e[0m"
@@ -528,6 +532,16 @@ elif [ "$1" = "--edit-com" ]; then
 
 elif [ "$1" = "--add" ]; then
 	database_mod --add "$2" "$3" "$4" "$5"
+
+elif [ "$1" = "--add-wget" ]; then
+	rmfileonfail="true"
+	wfile=$RANDOM
+	wget -q -O "$wfile" "$2"
+	finalfilename="$wfile.$(derpiget_idfiletype "$wfile")"
+	mv "$wfile" "$finalfilename"
+	database_mod --add "$finalfilename" "$3" "$4" "$5"
+	rm "$finalfilename"
+
 elif [ "$1" = "--extract" ]; then
 	if [ "$2" != "" ]; then
 		for EXTRACT_ID in "$@"; do
