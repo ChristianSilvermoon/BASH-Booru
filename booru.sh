@@ -7,9 +7,30 @@
 # -Abillity to delete files
 # -Abillity to open files
 
-# Functions ------------------#
-
 version="17.9.11-git by Christian Silvermoon"
+
+# Lock File Handling ---------#
+
+function cleanup {
+	#Cleans up junk
+	ec=$?
+	if [ "$lockexit" != "true" ]; then
+		rm ".bbooru.lock"
+	fi
+
+	exit "$ec"
+
+}
+
+trap "cleanup" EXIT INT
+if [ -e ".bbooru.lock" ]; then
+	echo -e "\e[31;1mUnable to lock directory... is there another instance running?\nIf you believe this is an error try again after: rm \".bbooru.lock\" \e[0m"
+	lockexit=true
+	exit 1
+fi
+touch ".bbooru.lock"
+
+# Functions ------------------#
 
 function derpiget_idfiletype {
 	#Use: derpiget_idfiletype FILENAME
