@@ -274,6 +274,12 @@ if [ ! -e "bbooru-mimetypes.csv" ]; then
 	echo -e "\"image/png\",\"png\"\n\"image/jpeg\",\"jpeg\"\n\"application/vnd.oasis.opendocument.text\",\"odt\"\n\"video/webm\",\"webm\"\n\"image/gif\",\"gif\"\n\"text/plain\",\"txt\"\n\"application/x-shockwave-flash\",\"swf\"\n\"application/x-dosexec\",\"exe\"\n\"application/epub+zip\",\"epub\"\n\"application/pdf\",\"pdf\"\n\"video/mp4\",\"mp4\"\n\"text/x-shellscript\",\"sh\"\n\"application/java-archive\",\"jar\"\n\"audio/mpeg\",\"mp3\"\n\"audio/ogg\",\"ogg\"\n\"application/x-iso9660-image\",\"iso\"" > bbooru-mimetypes.csv
 fi
 
+#IF Files Directory is missing
+if [ ! -d "files" ]; then
+	echo "Creating missing directory: \"files\""
+	mkdir "files"
+fi
+
 db_entry_count=$(< bbooru-db.csv wc -l)
 db_highest_id=$(database_query --highestID)
 
