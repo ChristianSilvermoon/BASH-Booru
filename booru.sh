@@ -119,6 +119,8 @@ function database_mod {
 			COMMENT="$5"
 		fi
 
+		COMMENT=$(echo "$COMMENT" | sed 's/,/[c]/g' | sed 's/\"/[q]/g' | tr -d '|')
+
 		echo -e "\"$ID\",\"$FILETYPE\",\"$DATE\",\"$MD5SUM\",\"$SIZE\",\"$ORIGINAL_NAME\",\"$SOURCES\",\"$TAGS\",\"$COMMENT\"" >> bbooru-db.csv
 		database_mod --reorder
 		cp "$2" "files/$ID.$FILETYPE"
@@ -174,7 +176,8 @@ function help_message {
 	echo -e "\e[1mARGUMENTS\e[0m"
 	echo -e "  --add <FILE>         Add file to BASH-Booru"
 	echo -e "  --add-csv <FILE>     Add using a Shimmie2 Bulk_Add_CSV file"
-	echo -e "  --add-wget <URL>     Download URL And Add to BASH-Booru"
+	echo -e "  --add-derpi <URL>    Download Derpibooru post and add to BASH-Booru"
+	echo -e "  --add-wget <URL>     Download URL and add to BASH-Booru"
 	echo -e "  --edit-com <ID>      Edit file's Comment"
 	echo -e "  --edit-src <ID>      Edit file's Sources"
 	echo -e "  --edit-tags <ID>     Edit file's Tags\e[0m"
@@ -185,7 +188,7 @@ function help_message {
 	echo -e "  --info               Output some info about the database and files"
 	echo -e "  --remove <ID>        Delete file from BASH-booru"
 	echo -e "  --open <ID>          Open file using handler"
-	echo -e "  --search <Query>     Search Database for files"
+	echo -e "  --search <Query>     Search database for files"
 	echo -e "  --show <ID>          Show all details on a file"
 	echo -e "  --tag-info <Tag>     Show details about a tag"
 	echo -e "  --version            Outputs version number"
@@ -200,6 +203,49 @@ function resolve_alias {
 		echo "$alias_check" | cut -d',' -f 2 | tr -d '"'
 	fi
 }
+
+function derpiget {
+	#port of DerpiGET's Page disection/download function
+
+	#Verify that "$1" is a valid Derpibooru post URL
+	if [ "$(echo "$1" | cut -d'?' -f 1 | grep -E "^http(s|)://derpibooru.org/[0-9]*$")" = "" ]; then
+		echo "Invalid Derpibooru Post URL!"
+		exit 1
+	fi
+
+	html="$(wget -q -O- "$1" | sed 's/>/>\n/g')"
+
+	wget -q -O ".bbooru-derpiget.tmp" "$(echo "$html" | grep "View this image at full res with a short filename" | sed 's/\" /\"\n/g' | sed 's/href=\"/http:/g' | sed 's/\">//g' | grep "http:" | sed 's/http:/https:/g')"
+
+	json=$(wget -q -O- "$(echo "$1" | cut -d'?' -f 1).json")
+	tags=$(echo "$html" | grep "tag dropdown" | sed 's/\" /\"\n/g' | grep "data-tag-name=" | cut -d"=" -f 2 | sed 's/\"//g' | tr '\n' ',' | sed 's/,/, /g')
+	tags=$(echo "$tags" | sed 's/, /,/g' | tr ' ' '_' | tr ',' ' ')
+	#echo -e "\e[1mTAGS\n\e[0m$tags\n\n"
+
+	description="$(echo "$json" | sed 's/\\u003e\\u003e/https:\/\/derpibooru.org\//g' | sed 's/","/",\n"/g' | grep "^\"description" | cut -d':' -f 2- | sed 's/^"//g' | sed 's/",$//g' | sed 's/\\r\\n/|/g' | sed 's/\\"/[q]/g' | sed 's/,/[c]/g' | sed 's/\[spoiler\]//g' | sed 's/\[\/spoiler\]//g')"
+
+	# sed -r -e 's/^.{60}/&[n]/'
+	if [ "$description" = "" ]; then
+		description="No Description. $(echo "$tags" | cut -d' ' -f 1-4)"
+		description="$(echo "$description" | cut -c 1-60)"
+	else
+		if [ "$(echo "$description" | cut -d'|' -f 1 | wc -c)" -gt "60" ]; then
+			description="$(echo "$description" | sed -r -e 's/^.{60}/&|/')"
+		fi
+	fi
+	description="$(echo "$description" | sed 's/|/[n]/g')"
+
+	#echo -e "\e[1mDESCRIPTION\e[0m\n$description\n\n"
+
+	source=$(echo "$html" | grep "dc:source" | sed 's/\" /\"\n/g' | grep "href=" | sed 's/href=\"//g' | sed 's/\">//g')
+	#echo -e "\e[1mSOURCE\e[0m\n$source $(echo "$1" | cut -d'?' -f 1)"
+
+	TAGS="$tags"
+	SOURCE="$source $(echo "$1" | cut -d'?' -f 1)"
+	COMMENT="$description"
+
+}
+
 # /Functions -----------------#
 
 echo ""
@@ -238,7 +284,7 @@ if [ "$1" = "--list" ]; then
 		echo -e "\e[1mDatabase is empty, nothing to list.\e[0m"
 		exit
 	fi
-	< bbooru-db.csv awk -F "\",\"" '{print "\033[1m"$1": ["$2"/"$5"] "$9"\033[0m\n" $8"\n"}' | sed 's/\[n\].*$/ [+]/g' | sed -r "s/(\[\+]+.*$)/$(printf "\033[32;1m")\1$(printf "\033[0m")/g"  |  tr -d '"'
+	< bbooru-db.csv awk -F "\",\"" '{print "\033[1m"$1": ["$2"/"$5"] "$9"\033[0m\n" $8"\n"}' | sed 's/\[n\].*$/ [+]/g' | sed -r "s/(\[\+]+.*$)/$(printf "\033[32;1m")\1$(printf "\033[0m")/g"  |  tr -d '"' | sed 's/\[c\]/,/g' | sed 's/\[q\]/\"/g'
 
 elif [ "$1" = "--tag-info" ]; then
 	if [ "$2" != "" ]; then
@@ -351,6 +397,25 @@ elif [ "$1" = "--add-csv" ]; then
 		exit 1
 	fi
 
+elif [ "$1" = "--add-derpi" ]; then
+	SOURCE="3"
+	TAGS="2"
+	COMMENT="1"
+	derpiget "$2"
+	rmfileonfail="true"
+
+	wfile=$RANDOM
+	finalfilename="$wfile.$(derpiget_idfiletype ".bbooru-derpiget.tmp")"
+
+	until [ ! -e "$finalfilename" ]; do
+		wfile=$RANDOM
+		finalfilename="$wfile.$(derpiget_idfiletype ".bbooru-derpiget.tmp")"
+	done
+
+	mv ".bbooru-derpiget.tmp" "$finalfilename"
+	database_mod --add "$finalfilename" "$SOURCE" "$TAGS" "$COMMENT"
+	rm "$finalfilename"
+
 elif [ "$1" = "--list-tags" ]; then
 	#List all tags
 	alltags=$(< bbooru-db.csv cut -d',' -f 8 | tr -d '"' | tr ' ' '\n' | sort)
@@ -400,7 +465,7 @@ elif [ "$1" = "--search" ]; then
 		if [ "$search_results" != "" ]; then
 			echo -e "\e[1mFound \e[1;32m$result_count\e[0;1m Result$(if [ "$result_count" != "1" ]; then echo "s"; fi)\e[0m\n"
 			for postid in $search_results; do
-				< bbooru-db.csv grep "^\"$postid\"" | awk -F "\",\"" '{print "\033[1m"$1": ["$2"/"$5"] "$9"\033[0m\n" $8"\n"}' | sed 's/\[n\].*$/ [+]/g' | sed -r "s/(\[\+]+.*$)/$(printf "\033[32;1m")\1$(printf "\033[0m")/g"  |  tr -d '"'
+				< bbooru-db.csv grep "^\"$postid\"" | awk -F "\",\"" '{print "\033[1m"$1": ["$2"/"$5"] "$9"\033[0m\n" $8"\n"}' | sed 's/\[n\].*$/ [+]/g' | sed -r "s/(\[\+]+.*$)/$(printf "\033[32;1m")\1$(printf "\033[0m")/g"  |  tr -d '"' | sed 's/\[c\]/,/g' | sed 's/\[q\]/\"/g'
 			done
 		else
 			echo -e "\e[31;1mNo Results\e[0m"
@@ -415,7 +480,7 @@ elif [ "$1" = "--show" ]; then
 	#Show more detailed info about a post
 	if [ "$2" != "" ]; then
 		if [ "$(database_query --idTest "$2")" != "" ]; then
-			< bbooru-db.csv grep "^\"$2\"" | sed 's/^"//g' | sed 's/"$//g' | awk -F "\",\"" '{print "\033[1mID: \033[0m"$1"\n\033[1mFile Type: \033[0m"$2"\n\033[1mDate Added: \033[0m"$3"\n\033[1mMD5: \033[0m"$4"\n\033[1mSize: \033[0m"$5"\n\033[1mOriginal Name: \033[0m"$6"\n\033[1mSource: \033[0m"$7"\n\033[1mTags: \033[0m"$8"\n\033[1mComment: \033[0m"$9}' | sed 's/\[n\]/\n/g'
+			< bbooru-db.csv grep "^\"$2\"" | sed 's/^"//g' | sed 's/"$//g' | awk -F "\",\"" '{print "\033[1mID: \033[0m"$1"\n\033[1mFile Type: \033[0m"$2"\n\033[1mDate Added: \033[0m"$3"\n\033[1mMD5: \033[0m"$4"\n\033[1mSize: \033[0m"$5"\n\033[1mOriginal Name: \033[0m"$6"\n\033[1mSource: \033[0m"$7"\n\033[1mTags: \033[0m"$8"\n\033[1mComment: \033[0m"$9}' | sed 's/\[n\]/\n/g' | sed 's/\[c\]/,/g' | sed 's/\[q\]/\"/g'
 		else
 			echo -e "\e[31;1mFile ID \"$2\" does not exist in Database.\e[0m"
 			exit 1
@@ -520,12 +585,12 @@ elif [ "$1" = "--edit-com" ]; then
 			entry_p1=$(echo "$entry_all" | cut -d',' -f 1-8)
 
 			echo -e "\e[0;1mPOST $2's Old Comment:\e[0m"
-			database_query --comment "$2"
+			database_query --comment "$2" | sed 's/\[c\]/,/g' | sed 's/\[q\]/\"/g'
 
 			echo -e "\n\e[2mHint: You can use backspace, etc. to edit the comment below. Finish with the enter key!\n\n[n] is interpereted as new line on output.\e[0m"
 			echo -e "\n\e[1mPOST $2's New Comment:\e[0m"
 
-			read -ei "$(database_query --comment "$2")" COMMENT
+			read -ei "$(database_query --comment "$2" | sed 's/\[c\]/,/g' | sed 's/\[q\]/\"/g')" COMMENT
 			echo ""
 
 			read -p "Type \"yes\" to confirm changes: " option
@@ -533,7 +598,7 @@ elif [ "$1" = "--edit-com" ]; then
 
 				tmpdb=$(< bbooru-db.csv grep -v "^\"$2\"")
 				echo "$tmpdb" > bbooru-db.csv
-				COMMENT=$(echo "$COMMENT" | tr -d '|' | tr -d '"') #Sanatize Input
+				COMMENT=$(echo "$COMMENT" | tr -d '|' | sed 's/,/[c]/g' | sed 's/\"/[q]/g') #Sanatize Input
 				echo "$entry_p1,\"$COMMENT\"" >> bbooru-db.csv
 				database_mod --reorder
 			else
