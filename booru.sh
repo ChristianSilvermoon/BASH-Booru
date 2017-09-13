@@ -7,7 +7,7 @@
 # -Abillity to delete files
 # -Abillity to open files
 
-version="17.9.11-git by Christian Silvermoon"
+version="17.9.13-git by Christian Silvermoon"
 
 # Lock File Handling ---------#
 
@@ -124,6 +124,7 @@ function database_mod {
 		echo -e "\"$ID\",\"$FILETYPE\",\"$DATE\",\"$MD5SUM\",\"$SIZE\",\"$ORIGINAL_NAME\",\"$SOURCES\",\"$TAGS\",\"$COMMENT\"" >> bbooru-db.csv
 		database_mod --reorder
 		cp "$2" "files/$ID.$FILETYPE"
+		echo "Added File ID $ID."
 	elif [ "$1" = "--reorder" ]; then
 		database=$(< bbooru-db.csv sort -V | grep -v "^$")
 		echo "$database" > bbooru-db.csv
@@ -222,7 +223,7 @@ function derpiget {
 	tags=$(echo "$tags" | sed 's/, /,/g' | tr ' ' '_' | tr ',' ' ')
 	#echo -e "\e[1mTAGS\n\e[0m$tags\n\n"
 
-	description="$(echo "$json" | sed 's/\\u003e\\u003e/https:\/\/derpibooru.org\//g' | sed 's/","/",\n"/g' | grep "^\"description" | cut -d':' -f 2- | sed 's/^"//g' | sed 's/",$//g' | sed 's/\\r\\n/|/g' | sed 's/\\"/[q]/g' | sed 's/,/[c]/g' | sed 's/\[spoiler\]//g' | sed 's/\[\/spoiler\]//g')"
+	description="$(echo "$json" | sed 's/\\u003e\\u003e/https:\/\/derpibooru.org\//g' | sed 's/","/",\n"/g' | grep "^\"description" | cut -d':' -f 2- | sed 's/^"//g' | sed 's/",$//g' | sed 's/\\r\\n/|/g' | sed 's/\\"/[q]/g' | sed 's/,/[c]/g' | sed 's/\[spoiler\]//g' | sed 's/\[\/spoiler\]//g' | sed 's/\[bq\]/[n]----------[n]/g' | sed 's/\[\/bq\]/[n]----------[n]/g')"
 
 	# sed -r -e 's/^.{60}/&[n]/'
 	if [ "$description" = "" ]; then
