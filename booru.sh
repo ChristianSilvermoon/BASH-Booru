@@ -449,17 +449,17 @@ elif [ "$1" = "--search" ]; then
 				unset res_alias
 				search_query+="$tag "
 
-				search_results=$(echo "$search_results" | grep -wE "$tag")
+				search_results=$(echo "$search_results" | grep -wE "$(echo "$tag" |  sed -r 's/\(/\\\(/g' | sed -r 's/\)/\\\)/g')" )
 
 			elif [ "$(echo "$tag" | cut -c 1)" = "-" ]; then
 				tag=$(echo "$tag" | cut -c 2-)
 				tag=$(resolve_alias "$tag")
 				search_query+="-$tag "
 
-				search_results=$(echo "$search_results" | grep -wvE "$tag")
+				search_results=$(echo "$search_results" | grep -wvE "$(echo "$tag" |  sed -r 's/\(/\\\(/g' | sed -r 's/\)/\\\)/g')")
 			else
 				tag=$(resolve_alias "$tag")
-				search_results=$(echo "$search_results" | grep -wE "$tag")
+				search_results=$(echo "$search_results" | grep -wE "$(echo "$tag" |  sed -r 's/\(/\\\(/g' | sed -r 's/\)/\\\)/g')")
 				search_query+="$tag "
 			fi
 		done
