@@ -22,6 +22,8 @@ There are a few... this aims to replicate most of what you can do using an booru
 | --list-tags | Displays list of all tags and their use count |
 | --help | Display help message |
 | --info | Output some info about the database and files |
+| --random | Show a random file |
+| --random-open | Open a random file |
 | --remove (ID) | Delete file from BASH-booru |
 | --open (ID) | Open file using handler |
 | --search (Query) | Search database |
@@ -29,6 +31,8 @@ There are a few... this aims to replicate most of what you can do using an booru
 | --tag-info (Tag) | Show details about a tag |
 
 For more usage info, see the output of the `--help` argument!
+
+Darkened arguments in `--help` are unavailable. This is due to unimplemented features at this time.
 
 #### Search Syntax
 How do you USE the search feature exactly?

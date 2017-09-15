@@ -175,24 +175,31 @@ function help_message {
 	echo -e "\e[1mUSAGE\n\e[0m  bbooru <ARGS>\n"
 
 	echo -e "\e[1mARGUMENTS\e[0m"
-	echo -e "  --add <FILE>         Add file to BASH-Booru"
-	echo -e "  --add-csv <FILE>     Add using a Shimmie2 Bulk_Add_CSV file"
-	echo -e "  --add-derpi <URL>    Download Derpibooru post and add to BASH-Booru"
-	echo -e "  --add-wget <URL>     Download URL and add to BASH-Booru"
-	echo -e "  --edit-com <ID>      Edit file's Comment"
-	echo -e "  --edit-src <ID>      Edit file's Sources"
-	echo -e "  --edit-tags <ID>     Edit file's Tags\e[0m"
-	echo -e "  --extract <IDs>      Extract files with their origianl name"
-	echo -e "  --list               List files in database"
-	echo -e "  --list-tags          Displays list of all tags and their use count"
-	echo -e "  --help               Display this message"
-	echo -e "  --info               Output some info about the database and files"
-	echo -e "  --remove <ID>        Delete file from BASH-booru"
-	echo -e "  --open <ID>          Open file using handler"
-	echo -e "  --search <Query>     Search database for files"
-	echo -e "  --show <ID>          Show all details on a file"
-	echo -e "  --tag-info <Tag>     Show details about a tag"
-	echo -e "  --version            Outputs version number"
+	echo -e "  --add <FILE> [src] [tags] [com]  Add file to BASH-Booru"
+	echo -e "  --add-csv <FILE>                 Add using a Shimmie2 Bulk_Add_CSV file"
+	echo -e "  --add-derpi <URL>                Add from Derpibooru URL"
+	echo -e "  --add-wget <URL>                 Download URL and add to BASH-Booru"
+	echo -e "  --edit-com <ID>                  Edit file's Comment"
+	echo -e "  --edit-src <ID>                  Edit file's Sources"
+	echo -e "  --edit-tags <ID>                 Edit file's Tags\e[0m"
+	echo -e "  --extract <IDs>                  Extract files with their origianl name"
+	echo -e "  --list                           List files in database"
+	echo -e "  --list-tags                      Displays list of all tags with use count"
+	echo -e "  --help                           Display this message"
+	echo -e "  --info                           Output info about the database and files"
+	echo -e "  --random                         Show a random file"
+	echo -e "  --random-open                    Open a radnom file"
+	echo -e "\e[2m  --remove <ID>                    Delete file from BASH-booru\e[0m"
+	echo -e "  --open <ID>                      Open file using handler"
+	echo -e "\e[2m  --pool-edit-desc <ID>            Edit Pool Description\e[0m"
+	echo -e "\e[2m  --pool-edit-ids <ID>             Add/Remove files from pool\e[0m"
+	echo -e "\e[2m  --pool-edit-name <ID>            Rename Pool\e[0m"
+	echo -e "\e[2m  --pool-mk <Name> [IDs] [Desc]    Create a new pool\e[0m"
+	echo -e "\e[2m  --pool-rm <ID>                   Delete Pool\e[0m"
+	echo -e "  --search <Query>                 Search database for files"
+	echo -e "  --show <ID>                      Show all details on a file"
+	echo -e "  --tag-info <Tag>                 Show details about a tag"
+	echo -e "  --version                        Outputs version number"
 
 }
 
@@ -273,6 +280,12 @@ fi
 if [ ! -e "bbooru-mimetypes.csv" ]; then
 	echo "Mimetype data missing, creating..."
 	echo -e "\"image/png\",\"png\"\n\"image/jpeg\",\"jpeg\"\n\"application/vnd.oasis.opendocument.text\",\"odt\"\n\"video/webm\",\"webm\"\n\"image/gif\",\"gif\"\n\"text/plain\",\"txt\"\n\"application/x-shockwave-flash\",\"swf\"\n\"application/x-dosexec\",\"exe\"\n\"application/epub+zip\",\"epub\"\n\"application/pdf\",\"pdf\"\n\"video/mp4\",\"mp4\"\n\"text/x-shellscript\",\"sh\"\n\"application/java-archive\",\"jar\"\n\"audio/mpeg\",\"mp3\"\n\"audio/ogg\",\"ogg\"\n\"application/x-iso9660-image\",\"iso\"" > bbooru-mimetypes.csv
+fi
+
+#Create Pool Files
+if [ ! -e "bbooru-pools.csv" ]; then
+	echo "Pools data missing, creating.."
+	touch "bbooru-pools.csv"
 fi
 
 #IF Files Directory is missing
@@ -483,6 +496,9 @@ elif [ "$1" = "--search" ]; then
 		exit 1
 	fi
 
+elif [ "$1" = "--random" ]; then
+	< bbooru-db.csv grep "^\"$(< bbooru-db.csv cut -d',' -f 1 | tr -d '"' | sort -R | head -1)\"" | sed 's/^"//g' | sed 's/"$//g' | awk -F "\",\"" '{print "\033[1mID: \033[0m"$1"\n\033[1mFile Type: \033[0m"$2"\n\033[1mDate Added: \033[0m"$3"\n\033[1mMD5: \033[0m"$4"\n\033[1mSize: \033[0m"$5"\n\033[1mOriginal Name: \033[0m"$6"\n\033[1mSource: \033[0m"$7"\n\033[1mTags: \033[0m"$8"\n\033[1mComment: \033[0m"$9}' | sed 's/\[n\]/\n/g' | sed 's/\[c\]/,/g' | sed 's/\[q\]/\"/g'
+
 elif [ "$1" = "--show" ]; then
 	#Show more detailed info about a post
 	if [ "$2" != "" ]; then
@@ -692,6 +708,43 @@ elif [ "$1" = "--info" ]; then
 	echo -e "\nSize of Database: $db_size"
 	files_size=($(du -sh files))
 	echo "Size of Files: $files_size"
+
+elif [ "$1" = "--random-open" ]; then
+	id="$(< bbooru-db.csv cut -d',' -f 1 | tr -d '"' | sort -R | head -1)"
+	if [ -e "files/$id.$(database_query --filetype "$id")" ]; then
+		#Determine Handler for file type
+		handler=$(< bbooru-file_handlers.conf grep "^[QSNH] $(database_query --filetype "$id")" | cut -d' ' -f 1,3-)
+		if [ "$handler" = "" ]; then
+			handler=$(< bbooru-file_handlers.conf grep "^[QSNH] FALLBACK" | cut -d' ' -f 1,3-)
+		fi
+
+		#Determine Output Style
+		handlerCMD="$(echo "$handler" | cut -d' ' -f 2- | sed "s/%FILE%/files\/$id.$(database_query --filetype "$id")/g")"
+		if [ "$(echo "$handler" | cut -d' ' -f 1)" = "S" ]; then
+			#Standard Output
+			#echo "STANDARD"
+			$handlerCMD &
+		elif [ "$(echo "$handlerCMD" | cut -d' ' -f 1)" = "Q" ]; then
+			#Quiet Output (STDERR only)
+			#echo "QUIET"
+			$handlerCMD > /dev/null &
+		elif [ "$(echo "$handler" | cut -d' ' -f 1)" = "N" ]; then
+			#NULL Output (No output at all)
+			#echo "NULL"
+			$handlerCMD > /dev/null 2>&1 &
+		elif [ "$(echo "$handler" | cut -d' ' -f 1)" = "H" ]; then
+			#HALT Mode, freeze script until program exits
+			#Useful for interactive CLI applications
+			#echo "HALT"
+			$handlerCMD
+		else
+			echo -e "\e[31;1mbbooru-file_hanlders.conf error: Invalid Output Mode. Using Standard.\e[0m"
+			$handlerCMD &
+		fi
+	else
+		echo -e "\e[31;1mFile is missing from disk!\e[0m"
+		exit 1
+	fi
 
 elif [ "$1" = "--open" ]; then
 	if [ "$2" != "" ]; then
