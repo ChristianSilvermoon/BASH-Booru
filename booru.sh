@@ -197,6 +197,7 @@ function help_message {
 	echo -e "\e[2m  --pool-mk <Name> [IDs] [Desc]    Create a new pool\e[0m"
 	echo -e "\e[2m  --pool-rm <ID>                   Delete Pool\e[0m"
 	echo -e "  --search <Query>                 Search database for files"
+	echo -e "  --sym-searcch <Query>			Search and store results as symlinks"
 	echo -e "  --show <ID>                      Show all details on a file"
 	echo -e "  --tag-info <Tag>                 Show details about a tag"
 	echo -e "  --version                        Outputs version number"
@@ -223,7 +224,7 @@ function derpiget {
 
 	html="$(wget -q -O- "$1" | sed 's/>/>\n/g')"
 
-	wget -q -O ".bbooru-derpiget.tmp" "$(echo "$html" | grep "View this image at full res with a short filename" | sed 's/\" /\"\n/g' | sed 's/href=\"/http:/g' | sed 's/\">//g' | grep "http:" | sed 's/http:/https:/g')"
+	wget -q -O ".bbooru-derpiget.tmp" "$(echo "$html" | grep "View this image at full res with a short filename" | sed 's/\" /\"\n/g' | sed 's/href=\"/http:/g' | sed 's/\">//g' | grep "http:" | sed 's/http:/https:/g' | tr -d '"' | sed 's/<a //g')"
 
 	json=$(wget -q -O- "$(echo "$1" | cut -d'?' -f 1).json")
 	tags=$(echo "$html" | grep "tag dropdown" | sed 's/\" /\"\n/g' | grep "data-tag-name=" | cut -d"=" -f 2 | sed 's/\"//g' | tr '\n' ',' | sed 's/,/, /g')
@@ -495,6 +496,68 @@ elif [ "$1" = "--search" ]; then
 		echo -e "\e[31;1mYou must specifiy a search query!\e[0m"
 		exit 1
 	fi
+
+elif [ "$1" = "--symsearch" ]; then
+	if [ "$2" != "" ]; then
+		search_results=$(< bbooru-db.csv awk -F "\",\"" '{print "POSTID_"$1" FILETYPE_"$2" MD5_"$4" "$8}' | tr -d '"')
+		for tag in $2; do
+			#Search resolution functions
+			if [[ "$tag" == *"|"* ]]; then
+				#Tag contains OR operator
+				#First resolve aliases
+				tag=$(echo "$tag" | tr '|' ' ')
+				for tmptag in $tag; do
+					res_alias+="$(resolve_alias "$tmptag") "
+				done
+
+				res_alias=$(echo "$res_alias" | sed 's/ $//g')
+				tag=$(echo "$res_alias" | tr ' ' '|')
+				unset res_alias
+				search_query+="$tag "
+
+				search_results=$(echo "$search_results" | grep -wE "$(echo "$tag" |  sed -r 's/\(/\\\(/g' | sed -r 's/\)/\\\)/g')" )
+
+			elif [ "$(echo "$tag" | cut -c 1)" = "-" ]; then
+				tag=$(echo "$tag" | cut -c 2-)
+				tag=$(resolve_alias "$tag")
+				search_query+="-$tag "
+
+				search_results=$(echo "$search_results" | grep -wvE "$(echo "$tag" |  sed -r 's/\(/\\\(/g' | sed -r 's/\)/\\\)/g')")
+			else
+				tag=$(resolve_alias "$tag")
+				search_results=$(echo "$search_results" | grep -wE "$(echo "$tag" |  sed -r 's/\(/\\\(/g' | sed -r 's/\)/\\\)/g')")
+				search_query+="$tag "
+			fi
+		done
+		search_query=$(echo "$search_query" | sed 's/ $//g')
+		result_count=$(echo "$search_results" | tr ' ' '\n' | grep -c "POSTID")
+		search_results=$(echo "$search_results" | tr ' ' '\n' | grep "POSTID" | sed 's/POSTID_//g' | tr '\n' ' ')
+		echo "$search_results";
+
+		echo -e "\e[1mSearch Results for: \e[7m$search_query\e[0m\n"
+		#POST display information
+		if [ "$search_results" != "" ]; then
+			echo -e "\e[1mFound \e[1;32m$result_count\e[0;1m Result$(if [ "$result_count" != "1" ]; then echo "s"; fi)\e[0m\n"
+			for postid in $search_results; do
+				< bbooru-db.csv grep "^\"$postid\"" | awk -F "\",\"" '{print "\033[1m"$1": ["$2"/"$5"] "$9"\033[0m\n" $8"\n"}' | sed 's/\[n\].*$/ [+]/g' | sed -r "s/(\[\+]+.*$)/$(printf "\033[32;1m")\1$(printf "\033[0m")/g"  |  tr -d '"' | sed 's/\[c\]/,/g' | sed 's/\[q\]/\"/g'
+				if [ ! -d "search_results" ]; then
+					mkdir "search_results"
+				fi
+				rm -rf "search_results/*" #Clear old
+				filename=$(< bbooru-db.csv grep "^\"$postid\"" | sed 's/^\"//g' | awk -F "\",\"" '{print $1"."$2}')
+
+				ln -sf "$PWD/files/$filename" "search_results/$filename"
+			done
+				echo -e "\e[1mSearch results symlinked to \"search_results\"\e[0m"
+		else
+			echo -e "\e[31;1mNo Results\e[0m"
+			exit
+		fi
+	else
+		echo -e "\e[31;1mYou must specifiy a search query!\e[0m"
+		exit 1
+	fi
+
 
 elif [ "$1" = "--random" ]; then
 	< bbooru-db.csv grep "^\"$(< bbooru-db.csv cut -d',' -f 1 | tr -d '"' | sort -R | head -1)\"" | sed 's/^"//g' | sed 's/"$//g' | awk -F "\",\"" '{print "\033[1mID: \033[0m"$1"\n\033[1mFile Type: \033[0m"$2"\n\033[1mDate Added: \033[0m"$3"\n\033[1mMD5: \033[0m"$4"\n\033[1mSize: \033[0m"$5"\n\033[1mOriginal Name: \033[0m"$6"\n\033[1mSource: \033[0m"$7"\n\033[1mTags: \033[0m"$8"\n\033[1mComment: \033[0m"$9}' | sed 's/\[n\]/\n/g' | sed 's/\[c\]/,/g' | sed 's/\[q\]/\"/g'
