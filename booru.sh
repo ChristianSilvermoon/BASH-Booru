@@ -224,11 +224,11 @@ function derpiget {
 
 	html="$(wget -q -O- "$1" | sed 's/>/>\n/g')"
 
-	wget -q -O ".bbooru-derpiget.tmp" "$(echo "$html" | grep "View this image at full res with a short filename" | sed 's/\" /\"\n/g' | sed 's/href=\"/http:/g' | sed 's/\">//g' | grep "http:" | sed 's/http:/https:/g' | tr -d '"' | sed 's/<a //g')"
+	wget -q -O ".bbooru-derpiget.tmp" "$(echo "$html" | grep "View (no tags in filename)" | sed 's/\" /\"\n/g' | sed 's/href=\"/http:/g' | sed 's/\">//g' | grep "http:" | sed 's/http:/https:/g' | tr -d '"' | sed 's/<a //g')"
 
 	json=$(wget -q -O- "$(echo "$1" | cut -d'?' -f 1).json")
 	tags=$(echo "$html" | grep "tag dropdown" | sed 's/\" /\"\n/g' | grep "data-tag-name=" | cut -d"=" -f 2 | sed 's/\"//g' | tr '\n' ',' | sed 's/,/, /g')
-	tags=$(echo "$tags" | sed 's/, /,/g' | tr ' ' '_' | tr ',' ' ')
+	tags=$(echo "$tags" | sed "s/&#39;/'/g" | sed 's/, /,/g' | tr ' ' '_' | tr ',' ' ')
 	#echo -e "\e[1mTAGS\n\e[0m$tags\n\n"
 
 	description="$(echo "$json" | sed 's/\\u003e\\u003e/https:\/\/derpibooru.org\//g' | sed 's/","/",\n"/g' | grep "^\"description" | cut -d':' -f 2- | sed 's/^"//g' | sed 's/",$//g' | sed 's/\\r\\n/|/g' | sed 's/\\"/[q]/g' | sed 's/,/[c]/g' | sed 's/\[spoiler\]//g' | sed 's/\[\/spoiler\]//g' | sed 's/\[bq\]/[n]----------[n]/g' | sed 's/\[\/bq\]/[n]----------[n]/g')"
