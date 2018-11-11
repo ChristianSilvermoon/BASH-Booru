@@ -197,7 +197,7 @@ function help_message {
 	echo -e "\e[2m  --pool-mk <Name> [IDs] [Desc]    Create a new pool\e[0m"
 	echo -e "\e[2m  --pool-rm <ID>                   Delete Pool\e[0m"
 	echo -e "  --search <Query>                 Search database for files"
-	echo -e "  --sym-searcch <Query>			Search and store results as symlinks"
+	echo -e "  --sym-search <Query>			Search and store results as symlinks"
 	echo -e "  --show <ID>                      Show all details on a file"
 	echo -e "  --tag-info <Tag>                 Show details about a tag"
 	echo -e "  --version                        Outputs version number"
@@ -497,7 +497,7 @@ elif [ "$1" = "--search" ]; then
 		exit 1
 	fi
 
-elif [ "$1" = "--symsearch" ]; then
+elif [ "$1" = "--sym-search" ]; then
 	if [ "$2" != "" ]; then
 		search_results=$(< bbooru-db.csv awk -F "\",\"" '{print "POSTID_"$1" FILETYPE_"$2" MD5_"$4" "$8}' | tr -d '"')
 		for tag in $2; do
